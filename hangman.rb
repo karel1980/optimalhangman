@@ -32,9 +32,11 @@ class OptimalHangmanPlayer
     guess_count = 0
 
     keep_trying = true
+    remaining_words = @wordlist.find_all { |w| w.length == game.word_length }
     while known_chars.include?(nil) and keep_trying:
       keep_trying = false
-      guesses = next_guesses known_chars, misses
+      freq = letter_frequencies(remaining_words)
+      guesses = next_guesses(freq, known_chars)
       puts "My next guesses are #{guesses}" if verbose
       guesses.each do |guess|
         positions = game.letter_positions(guess)
@@ -42,11 +44,15 @@ class OptimalHangmanPlayer
         if positions.length == 0 then
           puts "Tried #{guess}: (miss) #{known_chars.map { |c| c.nil? ? "." : c}}" if verbose
           misses << guess
+          p = pattern_for_misses misses
+          remaining_words = remaining_words.find_all { |w| !p.match(w) }
         else
           puts "Tried #{guess}: (hit)  #{known_chars.map { |c| c.nil? ? "." : c}}" if verbose
           positions.each do |pos|
             known_chars[pos]=guess
           end
+          p = pattern_for_known known_chars
+          remaining_words = remaining_words.find_all { |w| p.match(w) }
           keep_trying = true
           break
         end
@@ -60,20 +66,15 @@ class OptimalHangmanPlayer
     return [guess_count, misses.size()]
   end
 
-  def next_guesses(known, misses)
-    occ = occurrences known, misses
-    return occ.sort_by { |k,v| -v }.map { |pair| pair[0] } - known
+  def next_guesses(frequencies, known_chars)
+    return frequencies.sort_by { |k,v| -v }.map { |pair| pair[0] } - known_chars
   end
 
-  def occurrences(known, misses)
+  def letter_frequencies(wordlist)
     result = Hash.new 0
-    must_match = pattern_for_known known
-    may_not_match = pattern_for_misses misses
-    @wordlist.each do |word|
-      if must_match.match(word) and (may_not_match.nil? or !may_not_match.match(word)) then
-        word.each_char do |char|
-          result[char] += 1
-        end
+    wordlist.each do |word|
+      word.each_char do |char|
+        result[char] += 1
       end
     end
     return result
@@ -107,6 +108,7 @@ end
 def print_misses_per_word(wordlist, player)
   wordlist.each do |word|
     puts "#{player.play(HangmanGame.new word)[1]} #{word}"
+    STDOUT.flush
   end
 end
 
@@ -126,7 +128,6 @@ case ARGV[0]
       player = OptimalHangmanPlayer.new wordlist
       game = HangmanGame.new ARGV[1]
       player.play game, true
-
     end
   when "print_misses_per_word"
     player = OptimalHangmanPlayer.new wordlist
