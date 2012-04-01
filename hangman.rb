@@ -37,6 +37,7 @@ class OptimalHangmanPlayer
       keep_trying = false
       freq = letter_frequencies(remaining_words)
       guesses = next_guesses(freq, known_chars)
+      puts "Remaining dictionary size: #{remaining_words.size}" if verbose
       puts "My next guesses are #{guesses}" if verbose
       guesses.each do |guess|
         positions = game.letter_positions(guess)
