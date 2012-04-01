@@ -21,5 +21,7 @@ There are different ways to evaluate hangman strategies. The most relevant evalu
 # Bugs
 
 * Wordlist cleanup simply drops accents, symbols, ...
+* Wordlist contains non-words: e.g. 'a','b','c','d', ...'z' (only a and i are words)
+  (this makes it very difficult to guess 'a', even though it should take at most 2 guesses)
 * Very slow implementation at the moment. 
 
