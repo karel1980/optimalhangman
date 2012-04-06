@@ -152,23 +152,35 @@ def recursive_next_guess(words, misses, known_chars)
 end
 
 def usage()
-  puts "usage: see README.md"
+  puts "usage: "
+  puts "  hangman.rb play {dictionary} {someword}      Shows how to guess {word} using the given dictionary"
+  puts "  hangman.rb score {dictionary}                Show the number of bad guesses needed to guess each word in the dictionary"
+  puts
+  puts "The dictionary should be a gzipped wordlist"
 end
 
-wordlist = load_words('dutch.txt.gz').find_all { |w| !w.nil? }
 case ARGV[0]
   when nil
     usage
   when "play"
-    if ARGV[1].nil? then
-      puts "Missing argument"
+    if ARGV[2].nil? then
+      puts "Missing argument(s)"
       usage
     else
+      wordlist = load_words(ARGV[1]).find_all { |w| !w.nil? }
       player = OptimalHangmanPlayer.new wordlist
-      game = HangmanGame.new ARGV[1]
+      game = HangmanGame.new ARGV[2]
       player.play game, true
     end
-  when "print_misses_per_word"
-    player = OptimalHangmanPlayer.new wordlist
-    print_misses_per_word(wordlist, player)
+  when "score"
+    if ARGV[1].nil? then
+      puts "Missing argument(s)"
+      usage
+    else
+      wordlist = load_words(ARGV[1]).find_all { |w| !w.nil? }
+      player = OptimalHangmanPlayer.new wordlist
+      print_misses_per_word(wordlist, player)
+    end
+  else
+    usage
 end
