@@ -67,20 +67,6 @@ class OptimalHangmanPlayer
     return [guess_count, misses.size()]
   end
 
-  def next_guesses(frequencies, known_chars)
-    return frequencies.sort_by { |k,v| -v }.map { |pair| pair[0] } - known_chars
-  end
-
-  def letter_frequencies(wordlist)
-    result = Hash.new 0
-    wordlist.each do |word|
-      word.each_char do |char|
-        result[char] += 1
-      end
-    end
-    return result
-  end
-
   def pattern_for_known(known)
     return Regexp.new "^" + known.map { |c| c.nil? ? "." : c }.join("") + "$"
   end
@@ -94,22 +80,74 @@ class OptimalHangmanPlayer
   end
 end
 
+def letter_frequencies(wordlist)
+  result = Hash.new 0
+  wordlist.each do |word|
+    word.each_char do |char|
+      result[char] += 1
+    end
+  end
+  return result
+end
+
+def next_guesses(frequencies, known_chars)
+  return frequencies.sort_by { |k,v| -v }.map { |pair| pair[0] } - known_chars
+end
+
 def load_words(dictfile)
   $stderr.puts "Reading dictionary..."
   gz = Zlib::GzipReader.new(File.new dictfile) 
-  wordlist = gz.read.split("\n")
-  wordlist.map! do |word|
+  wordlist = gz.readlines.map! do |word|
     word.downcase!
     word.gsub!(/[^a-z]/, "")
   end
-  $stderr.puts "done."
+  $stderr.puts "done. #{wordlist.size} words."
   return wordlist
 end
 
 def print_misses_per_word(wordlist, player)
-  wordlist.each do |word|
-    puts "#{player.play(HangmanGame.new word)[1]} #{word}"
-    STDOUT.flush
+  by_length=wordlist.group_by{|w|w.length}
+  by_length.each{|l,words|
+    misses=[]
+    known_chars=[]
+    recursive_next_guess(words, misses, known_chars)
+  }
+end
+
+def recursive_next_guess(words, misses, known_chars)
+  #puts "-------------------"
+  #puts "# remaining/misses/known: #{words.size}/#{misses}/#{known_chars}"
+  return if words.size == 0
+  #puts words.join(",")
+  # remove found words
+  complete_words = words.find_all do |w|
+    notguesses = w.split(//) - known_chars
+    notguesses.size == 0
+  end
+  complete_words.each do |w|
+    puts "#{misses.size} #{w}"
+  end
+  #puts "# complete words: #{complete_words.size}"
+  words = words - complete_words
+  return if words.size == 0
+  #puts "# remaining unguesses words: #{words.size}"
+  freq = letter_frequencies(words)
+  guesses = next_guesses(freq, known_chars)
+  #puts "next guess: #{guesses[0]}"
+  if guesses.size == 0 then
+    #puts "exhausted for #{words.join(",")}"
+  else
+    guess = guesses[0]
+
+    matching = words.find_all{|w| w.index(guess)}
+    known_chars << guess
+    recursive_next_guess(matching, misses, known_chars)
+    known_chars.delete guess
+
+    non_matching = words.find_all{|w| !w.index(guess)}
+    misses << guess
+    recursive_next_guess(non_matching, misses, known_chars)
+    misses.delete guess
   end
 end
 
@@ -117,7 +155,7 @@ def usage()
   puts "usage: see README.md"
 end
 
-wordlist = load_words('english.txt.gz')
+wordlist = load_words('dutch.txt.gz').find_all { |w| !w.nil? }
 case ARGV[0]
   when nil
     usage
